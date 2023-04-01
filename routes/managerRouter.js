@@ -8,5 +8,8 @@ const managerRouter = new Router();
 managerRouter.post('/registration', ManagerControllers.registration);
 managerRouter.post('/login', ManagerControllers.login);
 managerRouter.get('/auth',authMiddlewaer, ManagerControllers.auth);
+managerRouter.patch('/name',authMiddlewaer, ManagerControllers.changeName);
+managerRouter.patch('/password',authMiddlewaer, ManagerControllers.changePassword);
+managerRouter.delete('/',authMiddlewaer, ManagerControllers.deleteManager);
 
 module.exports = managerRouter;

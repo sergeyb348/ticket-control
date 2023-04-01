@@ -31,10 +31,10 @@ class ManagerControllers{
             if(error.parent.constraint === "managers_name_key")
                 return next(ApiError.badRequest('Данное имя уже зарегистрировано'));
 
-            else if(error.parent.constraint === "managers_email_key")
+            if(error.parent.constraint === "managers_email_key")
                 return next(ApiError.badRequest('Данный email уже зарегистрирован'));
-            else
-                return next(ApiError.internal('Неизвестная ошибка БД'));
+
+            return next(ApiError.internal('Неизвестная ошибка БД'));
             
         }
         
@@ -47,11 +47,10 @@ class ManagerControllers{
             return next(ApiError.badRequest('Не заданы все поля'));
 
         const manager = await Manager.findOne({where: {email: email}})
-
+        
         if(!manager)
             return next(ApiError.badRequest('Такого пользователя не существует'));
         
-        const comparePassword = bcrypt.compareSync(password, manager.password);
         if(!bcrypt.compareSync(password, manager.password))
             return next(ApiError.badRequest('Неверный пароль'));
         else{
@@ -63,6 +62,94 @@ class ManagerControllers{
     async auth(req, res, next){
         const token = generateJWT(req.id, req.name, req.email)
         return res.json({token})
+    }
+
+    async changeName(req, res, next){
+        const newName = req.body.newName;
+        if(!newName)
+            return next(ApiError.badRequest('Не заданы все поля'));
+        
+        const managerId = req.manager.id
+        try{
+            const managerDb = await Manager.findOne({where: {id: managerId}})
+
+            if(managerDb.name === newName)
+                return next(ApiError.internal('Новое имя не может соответствовать старому'));
+
+            managerDb.name = newName
+            await managerDb.save();
+
+            const token = generateJWT(managerDb.id, managerDb.name, managerDb.email)
+            return res.json({token})
+        }
+        catch(error){
+            console.log(error)
+
+            if(error.parent.constraint === "managers_name_key")
+                return next(ApiError.badRequest('Данное имя уже зарегистрировано'));
+            
+            return next(ApiError.internal('Неизвестная ошибка БД'));
+        }
+        
+    }
+
+    async changePassword(req, res, next){
+        const {newPassword , password} = req.body;
+
+        if(!newPassword || !password)
+            return next(ApiError.badRequest('Не заданы все поля'));
+
+        if(newPassword === password)
+            return next(ApiError.internal('Новой пароль не может соответствовать старому'));
+        
+        const managerId = req.manager.id
+        try{
+            const managerDb = await Manager.findOne({where: {id: managerId}})
+
+            if(!bcrypt.compareSync(password, managerDb.password))
+                return next(ApiError.badRequest('Неверный пароль'));
+
+            const hashPassword = await bcrypt.hash(newPassword, 5);
+
+            managerDb.password = hashPassword
+            await managerDb.save();
+
+            const token = generateJWT(managerDb.id, managerDb.name, managerDb.email)
+            return res.json({token})
+        }
+        catch(error){
+            console.log(error)
+            
+            return next(ApiError.internal('Неизвестная ошибка БД'));
+        }
+        
+    }
+
+    async deleteManager(req, res, next){
+        const {password} = req.body;
+
+        if(!password)
+            return next(ApiError.badRequest('Не заданы все поля'));
+        
+        const managerId = req.manager.id
+        try{
+
+            const managerDb = await Manager.findOne({where: {id: managerId}})
+
+            console.log(managerDb.password)
+            if(!bcrypt.compareSync(password, managerDb.password))
+                return next(ApiError.badRequest('Неверный пароль'));
+
+            await Manager.destroy({where: {id: managerId}})
+            
+            return res.json({message: "Аккаунт удален"})
+        }
+        catch(error){
+            console.log(error)
+            
+            return next(ApiError.internal('Неизвестная ошибка БД'));
+        }
+        
     }
 }
 
