@@ -12,6 +12,7 @@ function generateJWT(id, name, email){
 }
 
 class ManagerControllers{
+    
     async registration(req, res, next){  
         const {email, name, password} = req.body;
         if(!email || !name || !password)
@@ -60,7 +61,7 @@ class ManagerControllers{
     }
 
     async auth(req, res, next){
-        const token = generateJWT(req.id, req.name, req.email)
+        const token = generateJWT(req.manager.id, req.manager.name, req.manager.email)
         return res.json({token})
     }
 
@@ -105,6 +106,7 @@ class ManagerControllers{
         const managerId = req.manager.id
         try{
             const managerDb = await Manager.findOne({where: {id: managerId}})
+            console.log(managerDb)
 
             if(!bcrypt.compareSync(password, managerDb.password))
                 return next(ApiError.badRequest('Неверный пароль'));
@@ -119,6 +121,35 @@ class ManagerControllers{
         }
         catch(error){
             console.log(error)
+            
+            return next(ApiError.internal('Неизвестная ошибка БД'));
+        }
+        
+    }
+    
+    async changeEmail(req, res, next){
+        const newEmail = req.body.newEmail;
+        if(!newEmail)
+            return next(ApiError.badRequest('Не заданы все поля'));
+        
+        const managerId = req.manager.id
+        try{
+            const managerDb = await Manager.findOne({where: {id: managerId}})
+
+            if(managerDb.email === newEmail)
+                return next(ApiError.internal('Новый email не может соответствовать старому'));
+
+            managerDb.email = newEmail
+            await managerDb.save();
+
+            const token = generateJWT(managerDb.id, managerDb.name, managerDb.email)
+            return res.json({token})
+        }
+        catch(error){
+            console.log(error)
+
+            if(error.parent.constraint === "managers_email_key")
+                return next(ApiError.badRequest('Данный email уже зарегистрирован'));
             
             return next(ApiError.internal('Неизвестная ошибка БД'));
         }

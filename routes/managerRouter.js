@@ -1,15 +1,16 @@
 const { Router } = require("express");
 const ManagerControllers = require('../controllers/managerControllers')
-const authMiddlewaer = require('../middlewaer/authMiddlewaer')
+const authManagerMiddlewaer = require('../middlewaer/authManagerMiddlewaer')
 
 const managerRouter = new Router();
 
 
 managerRouter.post('/registration', ManagerControllers.registration);
 managerRouter.post('/login', ManagerControllers.login);
-managerRouter.get('/auth',authMiddlewaer, ManagerControllers.auth);
-managerRouter.patch('/name',authMiddlewaer, ManagerControllers.changeName);
-managerRouter.patch('/password',authMiddlewaer, ManagerControllers.changePassword);
-managerRouter.delete('/',authMiddlewaer, ManagerControllers.deleteManager);
+managerRouter.get('/',authManagerMiddlewaer, ManagerControllers.auth);
+managerRouter.patch('/name',authManagerMiddlewaer, ManagerControllers.changeName);
+managerRouter.patch('/password',authManagerMiddlewaer, ManagerControllers.changePassword);
+managerRouter.patch('/email',authManagerMiddlewaer, ManagerControllers.changeEmail);
+managerRouter.delete('/',authManagerMiddlewaer, ManagerControllers.deleteManager);
 
 module.exports = managerRouter;
