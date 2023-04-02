@@ -1,5 +1,5 @@
-.env
-node_modules/
+/.env
+/node_modules/
 node_modules/.package-lock.json
 node_modules/.bin/color-support
 node_modules/.bin/color-support.cmd
