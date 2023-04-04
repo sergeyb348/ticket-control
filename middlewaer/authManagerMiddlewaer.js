@@ -18,6 +18,7 @@ module.exports = async function(req, res, next){
 
         if(!managerDb)
             return res.status(401).json({message: "Не авторизован"});
+    
         req.manager = decoded;
         next()
     }

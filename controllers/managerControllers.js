@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require('bcrypt');
 const ApiError = require('../error/apiError');
 const {Manager} = require('../models/Model');
-const { where } = require("sequelize");
+const { validationResult } = require('express-validator/check');
 
 function generateJWT(id, name, email){
     const token = jwt.sign({id, name, email},
@@ -13,10 +13,14 @@ function generateJWT(id, name, email){
 
 class ManagerControllers{
     
-    async registration(req, res, next){  
+    async registration(req, res, next){
+        
+        const error = validationResult(req);
+
+        if(!error.isEmpty())
+            return next(ApiError.badRequest(error))
+        
         const {email, name, password} = req.body;
-        if(!email || !name || !password)
-            return next(ApiError.badRequest('Не заданы все поля'));
         
         const hashPassword = await bcrypt.hash(password, 5);
 
@@ -27,13 +31,30 @@ class ManagerControllers{
 
             return res.json({token})
         } catch (error) {
-            console.log(error);
 
             if(error.parent.constraint === "managers_name_key")
-                return next(ApiError.badRequest('Данное имя уже зарегистрировано'));
+                return next(ApiError.badRequest({
+                    errors: [
+                        {
+                            value: req.body.name,
+                            msg: "Данное имя уже зарегистрировано",
+                            param: "name",
+                            location: "body"
+                        }
+                    ]
+                }));
 
             if(error.parent.constraint === "managers_email_key")
-                return next(ApiError.badRequest('Данный email уже зарегистрирован'));
+                return next(ApiError.badRequest({
+                    errors: [
+                        {
+                            value: req.body.email,
+                            msg: "Данный email уже зарегистрирован",
+                            param: "email",
+                            location: "body"
+                        }
+                    ]
+                }));
 
             return next(ApiError.internal('Неизвестная ошибка БД'));
             
@@ -42,22 +63,41 @@ class ManagerControllers{
     }
 
     async login(req, res, next){
-        const {email, password} = req.body;
+        const error = validationResult(req);
 
-        if(!email || !password)
-            return next(ApiError.badRequest('Не заданы все поля'));
+        if(!error.isEmpty())
+            return next(ApiError.badRequest(error))
+        
+        const {email, password} = req.body;
 
         const manager = await Manager.findOne({where: {email: email}})
         
         if(!manager)
-            return next(ApiError.badRequest('Такого пользователя не существует'));
+            return next(ApiError.badRequest({
+                errors: [
+                    {
+                        value: req.body.email,
+                        msg: 'Такого пользователя не существует',
+                        param: "email",
+                        location: "body"
+                    }
+                ]
+            }));
         
         if(!bcrypt.compareSync(password, manager.password))
-            return next(ApiError.badRequest('Неверный пароль'));
-        else{
-            const token = generateJWT(manager.id, manager.name, manager.email);
-            return res.json({token})
-        }          
+            return next(ApiError.badRequest({
+                errors: [
+                    {
+                        value: req.body.password,
+                        msg: 'Неверный пароль',
+                        param: "password",
+                        location: "body"
+                    }
+                ]
+            }));
+
+        const token = generateJWT(manager.id, manager.name, manager.email);
+        return res.json({token})    
     }
 
     async auth(req, res, next){
@@ -66,16 +106,29 @@ class ManagerControllers{
     }
 
     async changeName(req, res, next){
+
+        const error = validationResult(req);
+
+        if(!error.isEmpty())
+            return next(ApiError.badRequest(error))
+
         const newName = req.body.newName;
-        if(!newName)
-            return next(ApiError.badRequest('Не заданы все поля'));
-        
+
         const managerId = req.manager.id
         try{
             const managerDb = await Manager.findOne({where: {id: managerId}})
 
             if(managerDb.name === newName)
-                return next(ApiError.internal('Новое имя не может соответствовать старому'));
+                return next(ApiError.badRequest({
+                    errors: [
+                        {
+                            value: req.body.newName,
+                            msg: 'Новое имя не может соответствовать старому',
+                            param: "newName",
+                            location: "body"
+                        }
+                    ]
+                }));
 
             managerDb.name = newName
             await managerDb.save();
@@ -87,7 +140,16 @@ class ManagerControllers{
             console.log(error)
 
             if(error.parent.constraint === "managers_name_key")
-                return next(ApiError.badRequest('Данное имя уже зарегистрировано'));
+                return next(ApiError.badRequest({
+                    errors: [
+                        {
+                            value: req.body.newName,
+                            msg: 'Данное имя уже зарегистрировано',
+                            param: "newName",
+                            location: "body"
+                        }
+                    ]
+                }));
             
             return next(ApiError.internal('Неизвестная ошибка БД'));
         }
@@ -95,13 +157,12 @@ class ManagerControllers{
     }
 
     async changePassword(req, res, next){
+        const error = validationResult(req);
+
+        if(!error.isEmpty())
+            return next(ApiError.badRequest(error))
+
         const {newPassword , password} = req.body;
-
-        if(!newPassword || !password)
-            return next(ApiError.badRequest('Не заданы все поля'));
-
-        if(newPassword === password)
-            return next(ApiError.internal('Новой пароль не может соответствовать старому'));
         
         const managerId = req.manager.id
         try{
@@ -109,7 +170,28 @@ class ManagerControllers{
             console.log(managerDb)
 
             if(!bcrypt.compareSync(password, managerDb.password))
-                return next(ApiError.badRequest('Неверный пароль'));
+                return next(ApiError.badRequest({
+                    errors: [
+                        {
+                            value: req.body.password,
+                            msg: 'Неверный пароль',
+                            param: "password",
+                            location: "body"
+                        }
+                    ]
+                }));
+
+            if(newPassword === password)
+                return next(ApiError.badRequest({
+                    errors: [
+                        {
+                            value: req.body.newPassword,
+                            msg: 'Новой пароль не может соответствовать старому',
+                            param: "newPassword",
+                            location: "body"
+                        }
+                    ]
+                }));
 
             const hashPassword = await bcrypt.hash(newPassword, 5);
 
@@ -128,16 +210,28 @@ class ManagerControllers{
     }
     
     async changeEmail(req, res, next){
+        const error = validationResult(req);
+
+        if(!error.isEmpty())
+            return next(ApiError.badRequest(error))
+        
         const newEmail = req.body.newEmail;
-        if(!newEmail)
-            return next(ApiError.badRequest('Не заданы все поля'));
         
         const managerId = req.manager.id
         try{
             const managerDb = await Manager.findOne({where: {id: managerId}})
 
             if(managerDb.email === newEmail)
-                return next(ApiError.internal('Новый email не может соответствовать старому'));
+                return next(ApiError.badRequest({
+                    errors: [
+                        {
+                            value: req.body.newEmail,
+                            msg: 'Новый email не может соответствовать старому',
+                            param: "newEmail",
+                            location: "body"
+                        }
+                    ]
+                }));
 
             managerDb.email = newEmail
             await managerDb.save();
@@ -149,7 +243,16 @@ class ManagerControllers{
             console.log(error)
 
             if(error.parent.constraint === "managers_email_key")
-                return next(ApiError.badRequest('Данный email уже зарегистрирован'));
+                return next(ApiError.badRequest({
+                    errors: [
+                        {
+                            value: req.body.newEmail,
+                            msg: 'Данный email уже зарегистрирован',
+                            param: "newEmail",
+                            location: "body"
+                        }
+                    ]
+                }));
             
             return next(ApiError.internal('Неизвестная ошибка БД'));
         }
@@ -157,11 +260,13 @@ class ManagerControllers{
     }
 
     async deleteManager(req, res, next){
+        const error = validationResult(req);
+
+        if(!error.isEmpty())
+            return next(ApiError.badRequest(error))
+
         const {password} = req.body;
 
-        if(!password)
-            return next(ApiError.badRequest('Не заданы все поля'));
-        
         const managerId = req.manager.id
         try{
 
@@ -169,7 +274,16 @@ class ManagerControllers{
 
             console.log(managerDb.password)
             if(!bcrypt.compareSync(password, managerDb.password))
-                return next(ApiError.badRequest('Неверный пароль'));
+                return next(ApiError.badRequest({
+                    errors: [
+                        {
+                            value: req.body.password,
+                            msg: 'Неверный пароль',
+                            param: "password",
+                            location: "body"
+                        }
+                    ]
+                }));
 
             await Manager.destroy({where: {id: managerId}})
             
