@@ -66,4 +66,29 @@ managerRouter.delete('/',
     ManagerControllers.deleteManager
 );
 
+managerRouter.post(
+    '/usher',
+    [
+        check('firstName').not().isEmpty().withMessage('Имя не задано').
+        isLength({max: 50}).withMessage('Имя должно включать до 50 символов'),
+        check('lastName').isLength({max: 50}).withMessage('Фамилия должно включать до 50 символов'),
+        check('surname').isLength({max: 50}).withMessage('Отчество должно включать до 50 символов'),
+        check('email').not().isEmpty().withMessage('Email не задан').
+        isEmail().withMessage('Неверный email'),
+        check('password').not().isEmpty().withMessage('пароль не задан').
+        isLength({min:6, max: 24}).withMessage('пароль должно включать от 6 до 24 символов')
+    ],
+    authManagerMiddlewaer,
+    ManagerControllers.addUsher
+);
+
+managerRouter.delete(
+    '/usher',
+    [
+        check('usherId').not().isEmpty().withMessage('Id не задан'),
+    ],  
+    authManagerMiddlewaer,
+    ManagerControllers.deleteUsher
+);
+
 module.exports = managerRouter;

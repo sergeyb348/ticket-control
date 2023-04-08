@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require('bcrypt');
 const ApiError = require('../error/apiError');
-const {Manager} = require('../models/Model');
+const {Manager, Usher} = require('../models/Model');
 const { validationResult } = require('express-validator/check');
 
 function generateJWT(id, name, email){
@@ -56,10 +56,8 @@ class ManagerControllers{
                     ]
                 }));
 
-            return next(ApiError.internal('Неизвестная ошибка БД'));
-            
+            return next(ApiError.internal('Неизвестная ошибка БД'));   
         }
-        
     }
 
     async login(req, res, next){
@@ -295,6 +293,92 @@ class ManagerControllers{
             return next(ApiError.internal('Неизвестная ошибка БД'));
         }
         
+    }
+
+    async addUsher(req, res, next){
+        
+        const error = validationResult(req);
+
+        if(!error.isEmpty())
+            return next(ApiError.badRequest(error))
+        
+        const {email, firstName, lastName, surname, password} = req.body;
+        
+        const hashPassword = await bcrypt.hash(password, 5);
+
+        try {
+            const usher = await Usher.create({
+                email: email, 
+                firstName: firstName,
+                lastName: lastName,
+                surname: surname,
+                password: hashPassword,
+                managerId: req.manager.id
+            })
+
+            const token = generateJWT(req.manager.id, req.manager.name, req.manager.email);
+
+            return res.json({token})
+        } catch (error) {
+
+            console.log(error.parent.constraint )
+
+            if(error.parent.constraint === "ushers_email_key")
+                return next(ApiError.badRequest({
+                    errors: [
+                        {
+                            value: req.body.email,
+                            msg: "Данный email уже зарегистрирован",
+                            param: "email",
+                            location: "body"
+                        }
+                    ]
+                }));
+
+            return next(ApiError.internal('Неизвестная ошибка БД'));   
+        }
+    }
+
+    async deleteUsher(req, res, next){
+        
+        const error = validationResult(req);
+
+        if(!error.isEmpty())
+            return next(ApiError.badRequest(error))
+        
+        const {usherId} = req.body;
+
+        try {
+            const usher = await Usher.findOne({
+                where:{
+                    id:usherId,
+                    managerId:req.manager.id
+                }
+            })
+
+            if(!usher)
+            return next(ApiError.badRequest({
+                errors: [
+                    {
+                        value: req.body.email,
+                        msg: "Данного сотрудника не существует",
+                        param: "usherId",
+                        location: "body"
+                    }
+                ]
+            }));
+
+            await Usher.destroy({where: {id: usher.id}})
+
+            const token = generateJWT(req.manager.id, req.manager.name, req.manager.email);
+
+            return res.json({token})
+        } catch (error) {
+
+            console.log(error)
+            
+            return next(ApiError.internal('Неизвестная ошибка БД'));  
+        }
     }
 }
 
