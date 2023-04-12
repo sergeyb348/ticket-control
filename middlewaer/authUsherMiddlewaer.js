@@ -1,10 +1,13 @@
 const jwt = require("jsonwebtoken");
-const {Manager} = require("../models/Model")
+const {Usher} = require("../models/Model")
 const ApiError = require('../error/apiError')
 
 module.exports = async function(req, res, next){
     try {
+        console.log(req.headers.authorization)
         const token = req.headers.authorization;
+
+        console.log(req.headers.authorization)
 
         if(!token){
             return next(ApiError.unauthorized("Не авторизован"))
@@ -12,12 +15,12 @@ module.exports = async function(req, res, next){
 
         const decoded = jwt.verify(token, process.env.SECRET_KEY);
 
-        const managerDb = await Manager.findOne({where: {id: decoded.id}})
+        const usherDb = await Usher.findOne({where: {id: decoded.id}})
 
-        if(!managerDb)
+        if(!usherDb)
             return next(ApiError.unauthorized("Не авторизован"))
     
-        req.manager = decoded;
+        req.usher = decoded;
         next()
     }
     catch(error){

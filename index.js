@@ -2,7 +2,6 @@ const express = require("express");
 const router = require("./routes/index");
 const errorHandling = require('./middlewaer/errorHandlingMiddlewaer');
 const dbSequelize = require('./db')
-const models = require('./models/Model')
 
 require("dotenv").config();
 
@@ -12,9 +11,6 @@ app.use(express.json());
 
 app.use('/api', router)
 
-app.get('/', (req, res) =>{
-    res.send("12 Hello world!")
-});
 
 app.use(errorHandling);
 
