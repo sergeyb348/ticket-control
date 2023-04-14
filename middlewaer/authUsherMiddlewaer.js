@@ -4,10 +4,7 @@ const ApiError = require('../error/apiError')
 
 module.exports = async function(req, res, next){
     try {
-        console.log(req.headers.authorization)
         const token = req.headers.authorization;
-
-        console.log(req.headers.authorization)
 
         if(!token){
             return next(ApiError.unauthorized("Не авторизован"))

@@ -14,6 +14,7 @@ const Usher = dbSequelize.define('usher', {
     firstName: {type: DataTypes.STRING, allowNull: false},
     lastName: {type: DataTypes.STRING},
     surname: {type: DataTypes.STRING},
+    imageSrc:{type: DataTypes.STRING},
     password: {type: DataTypes.STRING, allowNull: false}
     });
 
