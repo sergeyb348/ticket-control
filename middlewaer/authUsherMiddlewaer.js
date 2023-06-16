@@ -1,10 +1,14 @@
 const jwt = require("jsonwebtoken");
 const {Usher} = require("../models/Model")
 const ApiError = require('../error/apiError')
+const log4js = require('log4js')
+
+const logger = log4js.getLogger()
 
 module.exports = async function(req, res, next){
     try {
         const token = req.headers.authorization;
+        logger.error(token)
 
         if(!token){
             return next(ApiError.unauthorized("Не авторизован"))

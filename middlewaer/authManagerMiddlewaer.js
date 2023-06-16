@@ -1,6 +1,9 @@
 const jwt = require("jsonwebtoken");
 const {Manager} = require("../models/Model")
 const ApiError = require('../error/apiError')
+const log4js = require('log4js')
+
+const logger = log4js.getLogger();
 
 module.exports = async function(req, res, next){
     try {
